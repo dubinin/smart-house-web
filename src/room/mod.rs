@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
+use crate::device::DatabaseDevice;
+
 pub mod web;
 
 #[derive(Deserialize, Debug)]
@@ -19,7 +21,6 @@ impl NewRoom {
         .execute(pool)
         .await?
         .last_insert_rowid();
-
         Ok(id)
     }
 }
@@ -31,7 +32,25 @@ pub struct Room {
     description: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct RoomFullInfo {
+    room: Room,
+    devices: Vec<DatabaseDevice>,
+}
+
 impl Room {
+    pub async fn find(room_id: i64, pool: &SqlitePool) -> Result<RoomFullInfo, sqlx::Error> {
+        let room = sqlx::query_as!(
+            Room,
+            r#"SELECT id, name, description FROM rooms WHERE id = ?1"#,
+            room_id
+        )
+        .fetch_one(pool)
+        .await?;
+        let devices = DatabaseDevice::find_by_room(room_id, pool).await?;
+        Ok(RoomFullInfo { room, devices })
+    }
+
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Room>, sqlx::Error> {
         let rooms = sqlx::query_as!(Room, r#"SELECT id, name, description FROM rooms"#)
             .fetch_all(pool)

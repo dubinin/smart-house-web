@@ -4,7 +4,7 @@ use axum::{
 };
 use sqlx::SqlitePool;
 
-pub use super::{NewRoom, Room};
+pub use super::{NewRoom, Room, RoomFullInfo};
 
 pub async fn create_room(
     State(pool): State<SqlitePool>,
@@ -16,6 +16,16 @@ pub async fn create_room(
             name: new_room.name,
             description: new_room.description,
         })),
+        Err(sql_err) => Err((StatusCode::INTERNAL_SERVER_ERROR, sql_err.to_string())),
+    }
+}
+
+pub async fn get_room(
+    Path(room_id): Path<i64>,
+    State(pool): State<SqlitePool>,
+) -> Result<Json<RoomFullInfo>, (StatusCode, String)> {
+    match Room::find(room_id, &pool).await {
+        Ok(full_info) => Ok(Json(full_info)),
         Err(sql_err) => Err((StatusCode::INTERNAL_SERVER_ERROR, sql_err.to_string())),
     }
 }

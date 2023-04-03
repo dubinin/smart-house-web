@@ -1,12 +1,13 @@
 use axum::{
-    routing::{delete, get},
+    routing::{get, post},
     Router,
 };
 use sqlx::SqlitePool;
 use std::{env, net::SocketAddr};
 
+use smart_house_web::device::web::{create_device, delete_device, get_device};
 use smart_house_web::house::web::get_house;
-use smart_house_web::room::web::{all_rooms, create_room, delete_room};
+use smart_house_web::room::web::{all_rooms, create_room, delete_room, get_room};
 
 #[tokio::main]
 async fn main() {
@@ -19,7 +20,9 @@ async fn main() {
     let app = Router::new()
         .route("/", get(get_house))
         .route("/rooms", get(all_rooms).post(create_room))
-        .route("/rooms/:room_id", delete(delete_room))
+        .route("/rooms/:room_id", get(get_room).delete(delete_room))
+        .route("/devices", post(create_device))
+        .route("/devices/:device_id", get(get_device).delete(delete_device))
         .with_state(pool);
 
     let port = std::env::var("PORT")

@@ -1,6 +1,6 @@
 use rand::Rng;
 
-use super::{Device, DisplayableDevice};
+use super::{DatabaseDevice, Device, DisplayableDevice};
 
 pub enum TemperatureScale {
     Kelvin,
@@ -77,6 +77,12 @@ impl Device for SmartThermometer {
 
     fn switch(&mut self) {
         self.is_on = !self.is_on;
+    }
+}
+
+impl From<&DatabaseDevice> for SmartThermometer {
+    fn from(value: &DatabaseDevice) -> Self {
+        Self { is_on: value.is_on }
     }
 }
 

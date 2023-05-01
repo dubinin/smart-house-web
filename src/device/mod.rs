@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
+use self::{socket::SmartSocket, thermometer::SmartThermometer};
+
+pub mod socket;
 pub mod thermometer;
 pub mod web;
 
@@ -20,6 +23,8 @@ pub trait Device {
 pub struct DeviceReport {
     id: i64,
     info: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    devices: Option<Vec<DeviceReport>>,
 }
 
 pub trait DisplayableDevice: Device + std::fmt::Display {}
@@ -76,7 +81,7 @@ impl DatabaseDevice {
         let devices = sqlx::query_as!(DatabaseDevice, r#"
             SELECT id, room as `room_id!`, parent as `parent_id?`, type as device_type, is_on as `is_on!: bool` 
             FROM devices 
-            WHERE room = ?1"#, room_id)
+            WHERE room = ?1 OR parent IN (SELECT id FROM devices WHERE room = ?1)"#, room_id)
             .fetch_all(pool)
             .await?;
         Ok(devices)
@@ -101,5 +106,34 @@ impl DatabaseDevice {
             .await?
             .rows_affected();
         Ok(affected_rows > 0)
+    }
+
+    pub fn get_id(&self) -> i64 {
+        self.id
+    }
+
+    pub fn get_parent_id(&self) -> Option<i64> {
+        self.parent_id
+    }
+}
+
+impl DeviceReport {
+    pub fn from(db_device: &DatabaseDevice, childs: Option<&Vec<DatabaseDevice>>) -> DeviceReport {
+        let info = match db_device.device_type.as_str() {
+            "thermometer" => SmartThermometer::from(db_device).to_string(),
+            "socket" => SmartSocket::from(db_device).to_string(),
+            _ => String::from("Unhandled device type!"),
+        };
+
+        DeviceReport {
+            id: db_device.id,
+            info,
+            devices: childs.map(|value| {
+                value
+                    .iter()
+                    .map(|device| DeviceReport::from(device, None))
+                    .collect()
+            }),
+        }
     }
 }

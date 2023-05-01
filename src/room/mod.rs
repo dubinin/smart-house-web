@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
-use crate::device::DatabaseDevice;
+use crate::device::{DatabaseDevice, DeviceReport};
 
 pub mod web;
 
@@ -27,7 +27,7 @@ impl NewRoom {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
-    id: i64,
+    pub id: i64,
     name: String,
     description: String,
 }
@@ -36,6 +36,12 @@ pub struct Room {
 pub struct RoomFullInfo {
     room: Room,
     devices: Vec<DatabaseDevice>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RoomReport {
+    pub room: Room,
+    pub devices: Vec<DeviceReport>,
 }
 
 impl Room {
